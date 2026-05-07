@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 
-# Configuración Nivel Hospitalario v4.0
+# Configuración Nivel Hospitalario v4.1
 st.set_page_config(page_title="NPT Pharma Monitor Pro", layout="wide", page_icon="⚕️")
 st.title("⚕️ Monitor Farmacoterapéutico Integral - NPT")
 
@@ -30,8 +30,7 @@ with st.sidebar:
     st.header("👤 1. Identificación y Clínica")
     nombre = st.text_input("Nombre del Paciente", "Paciente Ejemplo")
     tipo = st.selectbox("Grupo Etario", list(ESTANDARES.keys()))
-    peso = st.number_input("Peso (kg)", value=70.0, step=0.1, min_value=0.1)
-    vol_total = st.number_input("Volumen Total NPT (mL)", value=1500, min_value=1)
+    peso = st.number_input("Peso (kg)", value=76.85, step=0.01, min_value=0.1)
     
     st.header("🧪 2. Laboratorios")
     col1, col2 = st.columns(2)
@@ -46,17 +45,24 @@ with st.sidebar:
 
 # --- MÓDULO SAP ---
 st.subheader(f"📋 Formulación: {nombre}")
-sap_input = st.text_area("Pegue líneas de SAP:", "MAGNESIO 10\nCALCIO 15\nFOSFATO 20\nDEXTROSA 50% 200\nAMINOACIDOS 10% 500\nLIPIDOS 20% 100", height=150)
+st.info("💡 El Volumen Total se calculará automáticamente sumando los componentes.")
+sap_input = st.text_area("Pegue líneas de SAP:", 
+                         "MAGNESIO 10\nKATROL 30\nNATROL 30\nCALCIO 10\nGLICEROFOSFATO 20\nGLUCOSA 50% 160\nAMINOACIDOS 400\nLIPIDOS 100", height=200)
 
-if st.button("🚀 EJECUTAR ANÁLISIS INTEGRAL"):
+if st.button("🚀 EJECUTAR ANÁLISIS INTEGRAL", type="primary"):
     res_list = []
     nutrientes = {"Dex_g": 0, "Prot_g": 0, "Lip_g": 0, "Ca_mEq": 0, "P_mmol": 0}
+    vol_calculado = 0
     
-    for linea in sap_input.strip().split('\n'):
+    lineas = sap_input.strip().split('\n')
+    for linea in lineas:
         linea_up = linea.upper()
+        # Captura el volumen (último número)
         match = re.search(r"(\d+[\.,]?\d*)$", linea.strip())
         if match:
             vol = float(match.group(1).replace(',', '.'))
+            vol_calculado += vol # Suma automática al volumen total
+            
             comp = None
             if "MAGNESIO" in linea_up: comp = "Magnesio"
             elif "SODIO" in linea_up or "NATROL" in linea_up: comp = "Sodio"
@@ -78,8 +84,10 @@ if st.button("🚀 EJECUTAR ANÁLISIS INTEGRAL"):
                 nutrientes["Lip_g"] += (vol * 0.2)
             
             if comp:
-                # Lógica de validación ASPEN
-                aporte = vol * (0.46 if comp=="Calcio" else 1.0 if comp=="Fosforo" else 1.62 if comp=="Magnesio" else 2.0)
+                # Factor de conversión para la tabla (mEq o mmol según tipo)
+                f_conv = 1.62 if comp=="Magnesio" else 2.0 if (comp=="Sodio" or comp=="Potasio") else 0.46 if comp=="Calcio" else 1.0
+                aporte = vol * f_conv
+                
                 if comp in ESTANDARES[tipo]:
                     m_min, m_max, unit = ESTANDARES[tipo][comp]
                     r_min = m_min if "/kg" not in unit else m_min * peso
@@ -88,10 +96,11 @@ if st.button("🚀 EJECUTAR ANÁLISIS INTEGRAL"):
                     res_list.append({"Componente": comp, "Aporte": round(aporte,2), "Meta": f"{round(r_min,1)}-{round(r_max,1)}", "Estado": estado})
 
     if res_list:
+        st.success(f"📦 Volumen Total Detectado: {round(vol_calculado, 1)} mL")
         st.table(pd.DataFrame(res_list))
         
-        # --- CÁLCULOS AVANZADOS ---
-        st.subheader("⚙️ Balance Metabólico y Estabilidad")
+        # --- CÁLCULOS METABÓLICOS ---
+        st.subheader("⚙️ Balance y Estabilidad")
         c_dex = nutrientes["Dex_g"] * 3.4
         c_lip = nutrientes["Lip_g"] * 9.0
         c_np = c_dex + c_lip
@@ -100,20 +109,5 @@ if st.button("🚀 EJECUTAR ANÁLISIS INTEGRAL"):
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1:
             gir = (nutrientes["Dex_g"] * 1000) / (1440 * peso)
-            st.metric("GIR (Oxidación Glucosa)", f"{round(gir,2)} mg/kg/min")
-        with col_m2:
-            rel_cnp_n = c_np / nitrogeno if nitrogeno > 0 else 0
-            st.metric("Relación Cal NP / Nitrógeno", f"{round(rel_cnp_n,1)}:1")
-        with col_m3:
-            # Producto Ca x P para riesgo de precipitación (mEq/L x mmol/L)
-            ca_l = (nutrientes["Ca_mEq"] / vol_total) * 1000
-            p_l = (nutrientes["P_mmol"] / vol_total) * 1000
-            prod_cap = ca_l + p_l # Sumatoria simplificada para tamizaje
-            st.metric("Índice de Precipitación (Ca+P)", f"{round(prod_cap,1)}")
-
-        # --- ALERTAS CRÍTICAS ---
-        if prod_cap > 30:
-            st.error(f"🚨 RIESGO DE PRECIPITACIÓN ALTO: La sumatoria Ca + P es {round(prod_cap,1)} mEq+mmol/L. Límite sugerido: 30-45 según pH.")
-        if lab_p < 2.5:
-            st.error("⚠️ ALERTA: Fósforo sérico bajo. Riesgo de Síndrome de Realimentación.")
+            st.metric("GIR (
             
