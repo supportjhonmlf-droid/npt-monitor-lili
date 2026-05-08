@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v10.4 - Soporte de Decisión Clínica Robusto
+# SIMENP-FVL v10.5 - Soporte de Decisión Clínica Robusto
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide", page_icon="🧪")
@@ -43,15 +43,16 @@ with st.sidebar:
     v_uun = st.number_input("UUN (Nitrógeno Ureico Urinario)", value=0.0)
     v_cys = st.number_input("Cisteína (mg/g AA)", value=40 if "Neonato" in p_cat else 0)
 
-    # --- NUEVA SECCIÓN DE LABORATORIOS OPCIONALES ---
+    # --- SECCIÓN DE LABORATORIOS OPCIONALES ---
     with st.expander("🧪 Electrolitos y Función Renal", expanded=False):
         v_p = st.number_input("Fósforo sérico (mg/dL)", value=3.5, step=0.1)
         v_na = st.number_input("Sodio sérico (mEq/L)", value=140.0, step=1.0)
         v_mg = st.number_input("Magnesio sérico (mg/dL)", value=2.0, step=0.1)
+        v_bun = st.number_input("BUN sérico (mg/dL)", value=15.0, step=1.0) # NUEVO INPUT: BUN
         v_cr = st.number_input("Creatinina sérica (mg/dL)", value=0.9, step=0.1)
 
 # --- PANEL PRINCIPAL ---
-st.title("🥗 SIMENP-FVL v10.4")
+st.title("🥗 SIMENP-FVL v10.5")
 st.caption("Seguimiento Farmacoterapéutico Avanzado e Integral")
 sap_input = st.text_area("Pegue las líneas de SAP aquí (Nombre + Volumen mL):", height=150)
 
@@ -128,7 +129,7 @@ if st.button("🚀 INICIAR SEGUIMIENTO INTEGRAL", type="primary"):
                 st.warning(f"⚠️ Cationes divalentes elevados ({div:.1f} mEq/L). Riesgo de ruptura de emulsión (>20 mEq/L).")
 
         with t_adj:
-            # Alertas Metabólicas y Nutricionales Originales
+            # Alertas Metabólicas y Nutricionales
             if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender aporte de lípidos por 4-6h.[7]")
             elif v_tg > 250: st.warning("⚠️ TG > 250: Considerar reducción del 50% de lípidos.")
             
@@ -141,28 +142,32 @@ if st.button("🚀 INICIAR SEGUIMIENTO INTEGRAL", type="primary"):
             st.divider()
             st.markdown("#### 🔬 Alertas de Electrolitos y Función Renal")
             
-            # Nuevas Alertas de Electrolitos y Renal
+            # Alertas de Electrolitos
             if v_p < 2.5: 
                 st.error("🚨 HIPOFOSFATEMIA (< 2.5 mg/dL): Riesgo de Síndrome de Realimentación. Bloquear aumento de GIR o aportar Fósforo IV periférico.")
             if v_mg < 1.8:
                 st.error("🚨 HIPOMAGNESEMIA (< 1.8 mg/dL): Riesgo de arritmias y alteración en bomba Na/K. Considerar suplementación.")
-            
             if v_na > 145:
                 st.warning(f"⚠️ HIPERNATREMIA ({v_na} mEq/L): Evaluar estado de hidratación (déficit de agua libre) y reducir aporte de Sodio en NPT.")
             elif v_na < 135:
                 st.warning(f"⚠️ HIPONATREMIA ({v_na} mEq/L): Evaluar sobrecarga hídrica o pérdidas. Ajustar concentración de Sodio en la mezcla.")
                 
-            if v_cr >= 1.2:  # Umbral de advertencia general para adultos
-                if "Adulto" in p_cat or "Obesidad" in p_cat:
-                    st.warning(f"⚠️ CREATININA ELEVADA ({v_cr} mg/dL): Monitorear Tasa de Filtración Glomerular (TFG). Puede requerir ajuste de aporte proteico según estadio AKI/ERC.")
-                elif "Neonato" in p_cat or "Pediátrico" in p_cat:
-                    st.error(f"🚨 ALERTA RENAL PEDIÁTRICA ({v_cr} mg/dL): Creatinina elevada para población pediátrica/neonatal. Ajuste de líquidos y nitrógeno estricto.")
+            # LÓGICA DE FUNCIÓN RENAL: BUN Y CREATININA
+            if v_bun > 20 or v_cr >= 1.2:
+                if "Neonato" in p_cat or "Pediátrico" in p_cat:
+                    st.error(f"🚨 ALERTA RENAL PEDIÁTRICA: Creatinina ({v_cr}) o BUN ({v_bun}) elevados. Ajuste de líquidos y nitrógeno estricto.")
+                else:
+                    st.warning(f"⚠️ MARCADORES RENALES ELEVADOS (BUN: {v_bun} | Cr: {v_cr}). Monitorear tolerancia al aporte proteico.")
+                    
+                    if v_cr > 0:
+                        bun_cr_ratio = v_bun / v_cr
+                        if bun_cr_ratio > 20:
+                            st.info(f"💧 **Relación BUN/Cr = {bun_cr_ratio:.1f}** (>20). Sugiere **azoemia prerrenal** (posible deshidratación o hipoperfusión). Evaluar volumen hídrico total aportado.")
+                        elif bun_cr_ratio < 10:
+                            st.info(f"💧 **Relación BUN/Cr = {bun_cr_ratio:.1f}** (<10). Sugiere daño **renal intrínseco** (ej. NTA). Precaución con la carga de nitrógeno en la mezcla.")
+                        elif 10 <= bun_cr_ratio <= 20 and v_bun > 20 and v_cr >= 1.2:
+                            st.info(f"💧 **Relación BUN/Cr = {bun_cr_ratio:.1f}** (Normal). Sugiere enfermedad renal postrenal o avance de daño crónico. Monitorear TFG.")
 
         st.divider()
-        if "Neonato" in p_cat:
-            st.info("💡 Recordatorio Farmacéutico: Uso obligatorio de FOTOPROTECCIÓN y filtros de 1.2 micras para esta mezcla.[2, 9]")
-
-    else:
-        st.error("Error: Verifique el peso del paciente y el formato SAP (volumen numérico al final de la línea).")
-
-st.caption("Investigación de soporte: ASPEN 2023, ESPEN 2024, Ecuación de Anderson (Hospital Pharmacy 57:6). Liderado por el Químico Farmacéutico.")
+        if "
+                    
