@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v11.0 - Interfaz Clínica Profesional
+# SIMENP-FVL v11.1 - Interfaz Clínica Profesional (Corregida)
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide")
@@ -87,10 +87,11 @@ if st.button("EJECUTAR ANÁLISIS CLÍNICO", type="primary"):
                 return "ÓPTIMO"
             return "N/D"
 
+        # CORRECCIÓN: Se ajustó la línea de Lípidos para manejar correctamente la tupla del rango
         res_table = [
             ["Proteína (g/kg/d)", f"{nutri['Proteína']/p_weight:.2f}", f"{metas['prot'][0]} - {metas['prot'][1]}", check_meta(nutri['Proteína']/p_weight, metas['prot'])],
             ["Calorías (kcal/kg/d)", f"{kcal_tot/p_weight:.2f}", f"{metas['kcal'][0]} - {metas['kcal'][1]}", check_meta(kcal_tot/p_weight, metas['kcal'])],
-            ["Lípidos (g/kg/d)", f"{nutri['Lípidos']/p_weight:.2f}", f"Máx. {metas['lip']}", "CUMPLE" if nutri['Lípidos']/p_weight <= metas['lip'] else "NO CUMPLE"],
+            ["Lípidos (g/kg/d)", f"{nutri['Lípidos']/p_weight:.2f}", f"{metas['lip'][0]} - {metas['lip'][1]}", check_meta(nutri['Lípidos']/p_weight, metas['lip'])],
             ["GIR (mg/kg/min)", f"{gir:.2f}", f"{metas['gir'][0]} - {metas['gir'][1]}", check_meta(gir, metas['gir'])],
             ["Relación NPC:N", f"{npc_n:.1f}", f"{metas['npcn'][0]} - {metas['npcn'][1]}", check_meta(npc_n, metas['npcn'])]
         ]
@@ -143,4 +144,4 @@ if st.button("EJECUTAR ANÁLISIS CLÍNICO", type="primary"):
         st.caption("Validación Técnica: ASPEN 2023, ESPEN 2024. Modelo de Solubilidad de Anderson. Responsable Técnico: JMLF.")
     else:
         st.error("Error de validación: La estructura de la formulación SAP no contiene volúmenes cuantificables.")
-        
+            
