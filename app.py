@@ -135,7 +135,37 @@ if st.button("🚀 EJECUTAR SEGUIMIENTO INTEGRAL", type="primary"):
             st.metric("Índice Precipitación", f"{round(idx_precip,1)}", help="Suma de Ca + P por litro")
         with col_m4:
             st.metric("Total Kcal", f"{round(total_kcal,0)}")
+            #
+        # --- ADICIÓN: GUÍA DE REFERENCIA Y SOPORTE DE DECISIÓN ---
+with st.expander("📘 Guía de Referencia: Seguridad y Estabilidad"):
+    st.markdown("""
+    ### 1. Tasa de Oxidación de Glucosa (GIR)
+    * **Rango Recomendado (Adultos):** 4 - 7 mg/kg/min.
+    * **Rango Máximo (Neonatos):** Hasta 12-14 mg/kg/min.
+    * **Significado:** Evalúa la capacidad metabólica del hígado para procesar la glucosa.
+    * **Riesgos:** Un GIR > 7 en adultos se asocia a **hiperglucemia, esteatosis hepática** y aumento en la producción de CO2.
+    * **Recomendación:** Si el GIR es elevado, considere sustituir parte de las calorías de dextrosa por lípidos.
 
+    ### 2. Relación Calorías No Proteicas / Nitrógeno (CNP:N)
+    * **Pacientes Críticos:** 80:1 a 100:1.
+    * **Pacientes Estables:** 100:1 a 150:1.
+    * **Significado:** Indica si el aporte de energía (carbohidratos y grasas) es suficiente para que las proteínas se usen en la síntesis de tejidos y no como fuente de energía.
+    * **Recomendación:** Una relación muy baja sugiere que la proteína podría estarse "quemando" como energía; una muy alta sugiere sobrecarga calórica.
+
+    ### 3. Estabilidad Físico-Química (Índice Ca + P)
+    * **Límite de Seguridad:** < 35 - 45 (sumatoria de mEq/L de Ca + mmol/L de P).
+    * **Significado:** Predice el riesgo de formación de cristales de fosfato cálcico, los cuales pueden causar **embolia pulmonar** si se infunden.
+    * **Factores que aumentan el riesgo:**
+        * pH elevado (poca concentración de aminoácidos).
+        * Aumento de la temperatura ambiente.
+        * Uso de Sales de Calcio (Gluconato es más estable que el Cloruro).
+    * **Recomendación:** Si el índice supera 35, valide con las curvas de solubilidad específicas de la marca de aminoácidos utilizada.
+
+    ### 4. Función Renal (BUN/Creatinina)
+    * **Relación Normal:** 10:1 a 20:1.
+    * **Relación > 20:1:** Sugiere deshidratación, hemorragia digestiva o una carga de proteínas superior a la capacidad de aclaramiento renal.
+    """)
+    #
         # --- ALERTAS DE SEGURIDAD (CRUCE DE DATOS) ---
         st.divider()
         st.subheader("🚨 Diagnóstico Farmacoterapéutico")
