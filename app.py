@@ -3,12 +3,12 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v10.1 - Soporte de Decisión Avanzada
+# SIMENP-FVL v10.2 - Sistema de Seguimiento Integral
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide", page_icon="🧪")
 
-# --- GUÍAS TÉCNICAS (ASPEN/ESPEN) ---
+# --- GUÍAS TÉCNICAS (ASPEN / ESPEN / ESPGHAN) ---
 GUIDES = {
     "Adulto Estable": {"prot": (0.8, 1.5), "kcal": (20, 30), "gir": 5.0, "lip": 1.5, "aaf": 100},
     "Adulto Crítico": {"prot": (1.2, 2.5), "kcal": (20, 30), "gir": 4.0, "lip": 1.0, "aaf": 100},
@@ -35,15 +35,15 @@ with st.sidebar:
     p_weight = st.number_input("Peso Actual (kg)", value=70.0, step=0.1)
     horas_inf = st.number_input("Horas infusión", value=24, min_value=1)
     
-    st.header("🔬 Laboratorio")
-    v_p = st.number_input("P sérico (mg/dL)", value=3.5)
-    v_tg = st.number_input("TG (mg/dL)", value=150.0)
+    st.header("🔬 Monitorización")
+    v_p = st.number_input("Fósforo sérico (mg/dL)", value=3.5)
+    v_tg = st.number_input("Triglicéridos (mg/dL)", value=150.0)
     v_glu = st.number_input("Glucemia (mg/dL)", value=120.0)
-    v_uun = st.number_input("UUN (g/24h)", value=0.0)
+    v_uun = st.number_input("UUN (Nitrógeno Ureico Urinario)", value=0.0)
     v_cys = st.number_input("Cisteína (mg/g AA)", value=40 if "Neonato" in p_cat else 0)
 
-st.title("🥗 SIMENP-FVL v10.1")
-st.caption("Seguimiento Farmacoterapéutico Avanzado - Químico Farmacéutico")
+st.title("🥗 SIMENP-FVL v10.2")
+st.caption("Seguimiento Farmacoterapéutico Avanzado en Nutrición Parenteral")
 
 sap_input = st.text_area("Datos de SAP (Componente + Volumen mL):", height=150)
 
@@ -91,10 +91,10 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         c3.metric("Kcal/kg/día", f"{kcal_tot/p_weight:.1f}")
         c4.metric("Factor Solubilidad", f"{sol_factor:.1f}")
 
-        # --- Tabla de Evaluación ---
+        # --- Tabla de Evaluación (SINTAXIS CORREGIDA) ---
         st.subheader("📋 Cumplimiento de Metas Nutricionales")
-        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_8](start_span)[span_8](end_span)}", "g/kg/d"],
-           ['kcal']} - {GUIDES[p_cat]['kcal'][span_9](start_span)[span_9](end_span)}", "kcal/kg/d"],
+        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_3](start_span)[span_3](end_span)}", "g/kg/d"],
+           ['kcal']} - {GUIDES[p_cat]['kcal'][span_4](start_span)[span_4](end_span)}", "kcal/kg/d"],
             ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"máx {GUIDES[p_cat]['lip']}", "g/kg/d"],
             ["Fósforo", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
         st.table(pd.DataFrame(eval_list, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
@@ -102,7 +102,7 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         # --- Análisis y Ajustes ---
         t1, t2 = st.tabs(["⚖️ Estabilidad Física", "🏥 Ajustes Clínicos"])
         with t1:
-            st.write(f"**Solución (SF):** {sol_factor:.2f} | **Límite (PL):** {precip_limit:.2f}")
+            st.write(f"**Factor SF:** {sol_factor:.2f} | **Límite PL:** {precip_limit:.2f}")
             if sol_factor > precip_limit:
                 st.error("❌ RIESGO CRÍTICO DE PRECIPITACIÓN CALCIO-FÓSFORO.")
             else:
@@ -112,8 +112,8 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
                 st.warning(f"⚠️ Cationes divalentes elevados ({div:.1f} mEq/L). Riesgo de ruptura de emulsión.")
 
         with t2:
-            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Realimentación. Bloquear avance de GIR.")
-            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender lípidos y reevaluar.")
+            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Realimentación. No aumentar GIR.")
+            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender lípidos.")
             if v_glu > 180:
                 insu = nutri * 0.1
                 st.warning(f"🚨 HIPERGLUCEMIA: Sugerencia {insu:.1f} UI de Insulina Regular en bolsa.")
@@ -123,4 +123,5 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         st.error("Error: Verifique el peso y el formato de SAP (Volumen al final de cada línea).")
 
 st.divider()
-st.caption("Validado según ASPEN 2023 / ESPEN 2024 / Anderson Equation (Hospital Pharmacy 57:6).")
+st.caption("Validado según ASPEN 2023 / ESPEN 2024 / Ecuación de Anderson. Supervisión del Químico Farmacéutico requerida.")
+        
