@@ -130,4 +130,3 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
 
 st.divider()
 st.caption("Validado bajo estándares ASPEN 2023 / ESPEN 2024. SIMENP-FVL es propiedad intelectual del Servicio de Farmacia Clínica.")
-        
