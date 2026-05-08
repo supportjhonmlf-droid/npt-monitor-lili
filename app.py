@@ -169,5 +169,10 @@ if st.button("🚀 INICIAR SEGUIMIENTO INTEGRAL", type="primary"):
                             st.info(f"💧 **Relación BUN/Cr = {bun_cr_ratio:.1f}** (Normal). Sugiere enfermedad renal postrenal o avance de daño crónico. Monitorear TFG.")
 
         st.divider()
-        if "
-                    
+        if "Neonato" in p_cat:
+            st.info("💡 Recordatorio Farmacéutico: Uso obligatorio de FOTOPROTECCIÓN y filtros de 1.2 micras para esta mezcla.[2, 9]")
+
+    else:
+        st.error("Error: Verifique el peso del paciente y el formato SAP (volumen numérico al final de la línea).")
+
+st.caption("Investigación de soporte: ASPEN 2023, ESPEN 2024, Ecuación de Anderson (Hospital Pharmacy 57:6). Liderado por el Químico Farmacéutico.")
