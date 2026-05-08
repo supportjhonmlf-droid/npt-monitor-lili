@@ -99,8 +99,8 @@ if st.button("🚀 INICIAR SEGUIMIENTO INTEGRAL", type="primary"):
         # --- Tabla de Evaluación (SINTAXIS REPARADA) ---
         st.subheader("📋 Cumplimiento de Metas Nutricionales")
         metas = GUIDES[p_cat]
-        eval_data = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{metas['prot']} - {metas['prot'][5]}", "g/kg/d"],
-           } - {metas['kcal'][5]}", "kcal/kg/d"],
+        eval_data = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{metas['prot']} - {metas['prot'][5]}", "g/kg/d"]},
+            - {metas['kcal'][5]}", "kcal/kg/d"]},
             ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"< {metas['lip']}", "g/kg/d"],
             ["Fósforo (Aporte)", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
         st.table(pd.DataFrame(eval_data, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
