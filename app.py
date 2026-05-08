@@ -3,75 +3,79 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v10.2 - Sistema de Seguimiento Integral
+# SIMENP-FVL v10.3 - Soporte de Decisión Clínica Robusto
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide", page_icon="🧪")
 
 # --- GUÍAS TÉCNICAS (ASPEN / ESPEN / ESPGHAN) ---
 GUIDES = {
-    "Adulto Estable": {"prot": (0.8, 1.5), "kcal": (20, 30), "gir": 5.0, "lip": 1.5, "aaf": 100},
-    "Adulto Crítico": {"prot": (1.2, 2.5), "kcal": (20, 30), "gir": 4.0, "lip": 1.0, "aaf": 100},
-    "Adulto Obeso (BMI 30-50)": {"prot": (2.0, 2.5), "kcal": (11, 14), "gir": 4.0, "lip": 1.0, "aaf": 100},
-    "Neonato Pretérmino": {"prot": (3.0, 4.0), "kcal": (90, 120), "gir": 14.0, "lip": 3.0, "aaf": 200},
-    "Pediátrico (1-10 años)": {"prot": (1.5, 2.5), "kcal": (60, 80), "gir": 10.0, "lip": 2.5, "aaf": 150}
+    "Adulto Estable": {"prot": (0.8, 1.5), "kcal": (20, 30), "gir_max": 5.0, "lip": 1.5, "aaf": 100},
+    "Adulto Crítico": {"prot": (1.2, 2.5), "kcal": (20, 30), "gir_max": 4.0, "lip": 1.0, "aaf": 100},
+    "Obesidad (BMI 30-50)": {"prot": (2.0, 2.5), "kcal": (11, 14), "gir_max": 4.0, "lip": 1.0, "aaf": 100},
+    "Neonato Pretérmino": {"prot": (3.0, 4.0), "kcal": (90, 120), "gir_max": 14.0, "lip": 3.0, "aaf": 200},
+    "Pediátrico (1-10 años)": {"prot": (1.5, 2.5), "kcal": (60, 80), "gir_max": 10.0, "lip": 2.5, "aaf": 150}
 }
 
-SAP_MAP = {
-    "Magnesio": {"f": 1.62, "kw":},
-    "Sodio": {"f": 2.0, "kw":},
-    "Potasio": {"f": 2.0, "kw":},
-    "Calcio": {"f": 0.46, "kw":},
-    "Fósforo": {"f": 1.0, "kw":},
-    "Dextrosa": {"f": 0.5, "kw":},
-    "Proteína": {"f": 0.1, "kw":},
-    "Lípidos": {"f": 0.2, "kw":}
+# Factores de conversión SAP (v8.1 base + robustez)
+SAP_CONV = {
+    "Magnesio": {"f": 1.62, "u": "mEq", "kw":},
+    "Sodio": {"f": 2.0, "u": "mEq", "kw":},
+    "Potasio": {"f": 2.0, "u": "mEq", "kw":},
+    "Calcio": {"f": 0.46, "u": "mEq", "kw":},
+    "Fósforo": {"f": 1.0, "u": "mmol", "kw":},
+    "Dextrosa": {"f": 0.5, "u": "g", "kw":},
+    "Proteína": {"f": 0.1, "u": "g", "kw":},
+    "Lípidos": {"f": 0.2, "u": "g", "kw":}
 }
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("👤 Paciente")
+    st.header("👤 Perfil del Paciente")
+    p_name = st.text_input("Nombre / ID", "Paciente 01")
     p_cat = st.selectbox("Categoría Clínica", list(GUIDES.keys()))
     p_weight = st.number_input("Peso Actual (kg)", value=70.0, step=0.1)
-    horas_inf = st.number_input("Horas infusión", value=24, min_value=1)
+    horas_inf = st.number_input("Horas de goteo", value=24, min_value=1)
     
     st.header("🔬 Monitorización")
-    v_p = st.number_input("Fósforo sérico (mg/dL)", value=3.5)
-    v_tg = st.number_input("Triglicéridos (mg/dL)", value=150.0)
+    v_p = st.number_input("P sérico (mg/dL)", value=3.5)
+    v_tg = st.number_input("TG séricos (mg/dL)", value=150.0)
     v_glu = st.number_input("Glucemia (mg/dL)", value=120.0)
     v_uun = st.number_input("UUN (Nitrógeno Ureico Urinario)", value=0.0)
     v_cys = st.number_input("Cisteína (mg/g AA)", value=40 if "Neonato" in p_cat else 0)
 
-st.title("🥗 SIMENP-FVL v10.2")
-st.caption("Seguimiento Farmacoterapéutico Avanzado en Nutrición Parenteral")
+# --- PANEL PRINCIPAL ---
+st.title("🥗 SIMENP-FVL v10.3")
+st.caption("Seguimiento Farmacoterapéutico Avanzado e Integral")
+sap_input = st.text_area("Pegue las líneas de SAP aquí (Nombre + Volumen mL):", height=150)
 
-sap_input = st.text_area("Datos de SAP (Componente + Volumen mL):", height=150)
-
-if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
-    nutri = {k: 0.0 for k in SAP_MAP.keys()}
+if st.button("🚀 INICIAR SEGUIMIENTO INTEGRAL", type="primary"):
+    nutri = {k: 0.0 for k in SAP_CONV.keys()}
     vol_tot = 0
     
+    # Parser funcional del primer código
     for line in sap_input.strip().split('\n'):
         match = re.search(r"(\d+[\.,]?\d*)$", line.strip())
         if match:
             vol = float(match.group(1).replace(',', '.'))
             vol_tot += vol
-            for comp, data in SAP_MAP.items():
+            for comp, data in SAP_CONV.items():
                 if any(k in line.upper() for k in data["kw"]):
                     nutri[comp] += (vol * data["f"])
 
     if vol_tot > 0 and p_weight > 0:
-        # 1. Cálculos de Metabolismo
+        # 1. CÁLCULOS METABÓLICOS
         gir = (nutri * 1000) / (p_weight * horas_inf * 60)
         kcal_dex = nutri * 3.4
         kcal_lip = nutri["Lípidos"] * 9.0
         kcal_prot = nutri["Proteína"] * 4.0
         kcal_tot = kcal_dex + kcal_lip + kcal_prot
+        
         nitrog = nutri["Proteína"] / 6.25
         npc_n = (kcal_dex + kcal_lip) / nitrog if nitrog > 0 else 0
         bal_nit = nitrog - (v_uun + 4) if v_uun > 0 else None
         
-        # 2. Estabilidad de Anderson (Factor de Solución)
+        # 2. ESTABILIDAD ANDERSON (Fórmula de Seguridad)
         aa_perc = (nutri["Proteína"] / vol_tot) * 100
         ca_mql = (nutri["Calcio"] / vol_tot) * 1000
         p_mml = (nutri["Fósforo"] / vol_tot) * 1000
@@ -84,43 +88,53 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
             lip_g_kg = nutri["Lípidos"] / p_weight
             precip_limit -= (lip_g_kg * aaf_val / (aa_g_kg * 10 if aa_g_kg > 0 else 1))
 
-        # --- Dashboard ---
+        # --- Dashboard de Métricas ---
+        st.subheader(f"📊 Dashboard Farmacoterapéutico: {p_name}")
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("GIR (Oxidación)", f"{gir:.2f}", delta="ALTO" if gir > GUIDES[p_cat]["gir"] else None, delta_color="inverse")
-        c2.metric("Relación NPC:N", f"{npc_n:.1f}:1", help="Meta 80-100:1")
+        c1.metric("GIR (Oxidación)", f"{gir:.2f}", delta="ALTO" if gir > GUIDES[p_cat]["gir_max"] else None, delta_color="inverse")
+        c2.metric("Relación NPC:N", f"{npc_n:.1f}:1", help="Meta 80:1-100:1")
         c3.metric("Kcal/kg/día", f"{kcal_tot/p_weight:.1f}")
-        c4.metric("Factor Solubilidad", f"{sol_factor:.1f}")
+        c4.metric("AA Final (%)", f"{aa_perc:.1f}%")
 
-        # --- Tabla de Evaluación (SINTAXIS CORREGIDA) ---
+        # --- Tabla de Evaluación (SINTAXIS REPARADA) ---
         st.subheader("📋 Cumplimiento de Metas Nutricionales")
-        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_3](start_span)[span_3](end_span)}", "g/kg/d"],['kcal']} - {GUIDES[p_cat]['kcal'][span_4](start_span)[span_4](end_span)}", "kcal/kg/d"],
-            ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"máx {GUIDES[p_cat]['lip']}", "g/kg/d"],
-            ["Fósforo", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
-        st.table(pd.DataFrame(eval_list, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
+        metas = GUIDES[p_cat]
+        eval_data = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{metas['prot']} - {metas['prot'][5]}", "g/kg/d"],
+           } - {metas['kcal'][5]}", "kcal/kg/d"],
+            ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"< {metas['lip']}", "g/kg/d"],
+            ["Fósforo (Aporte)", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
+        st.table(pd.DataFrame(eval_data, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
 
-        # --- Análisis y Ajustes ---
-        t1, t2 = st.tabs(["⚖️ Estabilidad Física", "🏥 Ajustes Clínicos"])
-        with t1:
-            st.write(f"**Factor SF:** {sol_factor:.2f} | **Límite PL:** {precip_limit:.2f}")
+        # --- TABS DE ANÁLISIS ---
+        t_stab, t_adj = st.tabs(["⚖️ Estabilidad Fisicoquímica", "🏥 Ajustes Paraclínicos"])
+        
+        with t_stab:
+            st.write(f"**Solución (SF):** {sol_factor:.2f} | **Límite (PL):** {precip_limit:.2f}")
             if sol_factor > precip_limit:
-                st.error("❌ RIESGO CRÍTICO DE PRECIPITACIÓN CALCIO-FÓSFORO.")
+                st.error("❌ RIESGO CRÍTICO DE PRECIPITACIÓN: El factor SF excede el límite Anderson (PL).")
             else:
-                st.success("✅ Mezcla estable físico-químicamente.")
+                st.success("✅ Mezcla estable físico-químicamente para 24 horas.")
+            
             div = (nutri["Calcio"] + nutri["Magnesio"]) / (vol_tot/1000)
             if div > 20 and nutri["Lípidos"] > 0:
-                st.warning(f"⚠️ Cationes divalentes elevados ({div:.1f} mEq/L). Riesgo de ruptura de emulsión.")
+                st.warning(f"⚠️ Cationes divalentes elevados ({div:.1f} mEq/L). Riesgo de ruptura de emulsión (>20 mEq/L).")
 
-        with t2:
-            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Realimentación. No aumentar GIR.")
-            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender lípidos.")
+        with t_adj:
+            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Síndrome de Realimentación. Bloquear aumento de GIR.[6]")
+            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender aporte de lípidos por 4-6h.[7]")
+            elif v_tg > 250: st.warning("⚠️ TG > 250: Considerar reducción del 50% de lípidos.")
+            
             if v_glu > 180:
                 insu = nutri * 0.1
-                st.warning(f"🚨 HIPERGLUCEMIA: Sugerencia {insu:.1f} UI de Insulina Regular en bolsa.")
-            if bal_nit: st.info(f"**Balance Nitrogenado:** {bal_nit:.2f} g/día (Meta: +2 a +4)")
+                st.warning(f"🚨 HIPERGLUCEMIA: Sugerencia de añadir {insu:.1f} UI de Insulina Regular a la bolsa (0.1 UI/g Dex).")
+            
+            if bal_nit: st.info(f"**Balance Nitrogenado Estimado:** {bal_nit:.2f} g/día (Meta: +2 a +4 para anabolismo).[8]")
+
+        st.divider()
+        if "Neonato" in p_cat:
+            st.info("💡 Recordatorio Farmacéutico: Uso obligatorio de FOTOPROTECCIÓN y filtros de 1.2 micras para esta mezcla.[2, 9]")
 
     else:
-        st.error("Error: Verifique el peso y el formato de SAP (Volumen al final de cada línea).")
+        st.error("Error: Verifique el peso del paciente y el formato SAP (volumen numérico al final de la línea).")
 
-st.divider()
-st.caption("Validado según ASPEN 2023 / ESPEN 2024 / Ecuación de Anderson. Supervisión del Químico Farmacéutico requerida.")
-        
+st.caption("Investigación de soporte: ASPEN 2023, ESPEN 2024, Ecuación de Anderson (Hospital Pharmacy 57:6). Liderado por el Químico Farmacéutico.")
