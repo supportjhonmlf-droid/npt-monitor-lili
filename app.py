@@ -3,7 +3,7 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v11.2 - Soporte de Decisión Clínica de Alta Densidad
+# SIMENP-FVL v11.3 - Clinical Excellence (Soporte Glycophos)
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide")
@@ -16,15 +16,16 @@ GUIDES = {
     "Pediátrico": {"prot": (1.5, 2.5), "kcal": (60, 80), "gir": (6.0, 10.0), "lip": (1.5, 2.5), "npcn": (60, 80), "aaf": 150}
 }
 
+# Diccionario optimizado con GLYCOPHOS (Mapeo dual: Fósforo y Sodio)
 SAP_CONV = {
     "Proteína": {"f": 0.1, "u": "g", "kw": ["AMINO", "TRAVASOL", "AMINOSTERIL"]},
     "Dextrosa": {"f": 0.5, "u": "g", "kw": ["DEXTROSA", "GLUCOSA"]},
     "Lípidos": {"f": 0.2, "u": "g", "kw": ["SMOF", "LIPID", "INTRALIPID"]},
-    "Sodio": {"f": 2.0, "u": "mEq", "kw": ["SODIO", "NA"]},
+    "Sodio": {"f": 2.0, "u": "mEq", "kw": ["SODIO", "NA", "GLYCOPHOS"]}, # Glycophos suma Sodio (2 mEq/mL)
     "Potasio": {"f": 2.0, "u": "mEq", "kw": ["POTASIO", "K"]},
     "Calcio": {"f": 0.46, "u": "mEq", "kw": ["CALCIO", "GLUCONATO"]},
     "Magnesio": {"f": 1.62, "u": "mEq", "kw": ["MAGNESIO", "MG"]},
-    "Fósforo": {"f": 1.0, "u": "mmol", "kw": ["FOSFORO", "FÓSFORO", "P", "FOSFATO"]},
+    "Fósforo": {"f": 1.0, "u": "mmol", "kw": ["FOSFORO", "FÓSFORO", "P", "FOSFATO", "GLYCOPHOS"]}, # Glycophos suma Fósforo (1 mmol/mL)
     "Vitamina": {"f": 1.0, "u": "mL", "kw": ["CERNEVIT", "MVI", "VITAMINA"]},
     "Trazas": {"f": 1.0, "u": "mL", "kw": ["NULANZA", "PEDITRACE", "OLIGO"]}
 }
@@ -54,7 +55,7 @@ with st.sidebar:
 # --- LÓGICA DE PROCESAMIENTO ---
 st.title("SIMENP-FVL")
 st.subheader("Sistema de Monitorización Farmacoterapéutica de Nutrición Parenteral")
-sap_input = st.text_area("Prescripción SAP (Componente + Volumen mL):", height=150)
+sap_input = st.text_area("Prescripción SAP (Componente + Volumen mL):", height=150, placeholder="Ej: GLYCOPHOS 15")
 
 if st.button("EJECUTAR EVALUACIÓN INTEGRAL", type="primary"):
     nutri, vol_tot = {k: 0.0 for k in SAP_CONV}, 0
@@ -106,9 +107,9 @@ if st.button("EJECUTAR EVALUACIÓN INTEGRAL", type="primary"):
             def meta_tag(val, r): return "ÓPTIMO" if r[0] <= val <= r[1] else ("BAJO" if val < r[0] else "EXCESIVO")
             
             m_data = [
-                ["GIR (mg/kg/min)", f"{gir:.2f}", f"{metas['gir'][0]}-{metas['gir'][1]}", meta_tag(gir, metas['gir'])],
-                ["Kcal Totales (kcal/kg)", f"{kcal_tot/p_weight:.1f}", f"{metas['kcal'][0]}-{metas['kcal'][1]}", meta_tag(kcal_tot/p_weight, metas['kcal'])],
-                ["Relación NPC:N", f"{npc_n:.1f}", f"{metas['npcn'][0]}-{metas['npcn'][1]}", meta_tag(npc_n, metas['npcn'])]
+                ["GIR (mg/kg/min)", f"{gir:.2f}", f"{metas['gir'][0]} - {metas['gir'][1]}", meta_tag(gir, metas['gir'])],
+                ["Kcal Totales (kcal/kg)", f"{kcal_tot/p_weight:.1f}", f"{metas['kcal'][0]} - {metas['kcal'][1]}", meta_tag(kcal_tot/p_weight, metas['kcal'])],
+                ["Relación NPC:N", f"{npc_n:.1f}", f"{metas['npcn'][0]} - {metas['npcn'][1]}", meta_tag(npc_n, metas['npcn'])]
             ]
             st.table(pd.DataFrame(m_data, columns=["Parámetro", "Actual", "Rango Guía", "Estatus"]))
             if l["Alb"] > 0 and l["Alb"] < 3.0: st.warning(f"[ALERTA] Albúmina baja ({l['Alb']} g/dL): Posible sobreestimación de requerimientos calóricos por edema o inflamación.")
@@ -118,9 +119,15 @@ if st.button("EJECUTAR EVALUACIÓN INTEGRAL", type="primary"):
             col1.metric("Factor Anderson (SF)", f"{sf:.2f}")
             col2.metric("Límite Anderson (PL)", f"{pl:.2f}")
             
-            if sf > pl: st.error("[CRÍTICO] Riesgo de precipitación de Fosfato de Calcio detectado.")
-            elif sf > (pl * 0.85): st.warning("[PRECAUCIÓN] Mezcla en rango limítrofe de solubilidad.")
-            else: st.success("[ESTABLE] Relación de electrolitos segura para el volumen prescrito.")
+            # Ajuste de alerta para Glycophos
+            if "GLYCOPHOS" in sap_input.upper():
+                st.success("[ESTABLE - GLYCOPHOS] Se detectó Glicerofosfato de Sodio. El riesgo de precipitación Ca-P es clínicamente insignificante con esta sal orgánica.")
+            elif sf > pl: 
+                st.error("[CRÍTICO] Riesgo de precipitación de Fosfato de Calcio detectado (Fosfato inorgánico).")
+            elif sf > (pl * 0.85): 
+                st.warning("[PRECAUCIÓN] Mezcla en rango limítrofe de solubilidad (Fosfato inorgánico).")
+            else: 
+                st.success("[ESTABLE] Relación de electrolitos segura para el volumen prescrito.")
             
             divalentes = (nutri["Calcio"] + nutri["Magnesio"]) / (vol_tot/1000)
             if divalentes > 20 and nutri["Lípidos"] > 0: st.warning(f"[ADVERTENCIA] Cationes divalentes: {divalentes:.1f} mEq/L. Riesgo de ruptura de emulsión lipídica.")
@@ -146,4 +153,4 @@ if st.button("EJECUTAR EVALUACIÓN INTEGRAL", type="primary"):
         st.caption("Investigación de soporte: ASPEN 2023, ESPEN 2024. Algoritmos de Central de Mezclas. Validado por JMLF.")
     else:
         st.error("Error: La formulación ingresada no es válida o carece de volúmenes.")
-            
+        
