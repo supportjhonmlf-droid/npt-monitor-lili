@@ -146,4 +146,4 @@ if st.button("EJECUTAR EVALUACIÓN INTEGRAL", type="primary"):
         st.caption("Investigación de soporte: ASPEN 2023, ESPEN 2024. Algoritmos de Central de Mezclas. Validado por JMLF.")
     else:
         st.error("Error: La formulación ingresada no es válida o carece de volúmenes.")
-        
+            
