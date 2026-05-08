@@ -93,8 +93,7 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
 
         # --- Tabla de Evaluación (SINTAXIS CORREGIDA) ---
         st.subheader("📋 Cumplimiento de Metas Nutricionales")
-        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_3](start_span)[span_3](end_span)}", "g/kg/d"],
-           ['kcal']} - {GUIDES[p_cat]['kcal'][span_4](start_span)[span_4](end_span)}", "kcal/kg/d"],
+        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_3](start_span)[span_3](end_span)}", "g/kg/d"],['kcal']} - {GUIDES[p_cat]['kcal'][span_4](start_span)[span_4](end_span)}", "kcal/kg/d"],
             ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"máx {GUIDES[p_cat]['lip']}", "g/kg/d"],
             ["Fósforo", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
         st.table(pd.DataFrame(eval_list, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
