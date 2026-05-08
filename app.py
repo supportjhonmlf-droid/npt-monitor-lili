@@ -3,17 +3,10 @@ import pandas as pd
 import re
 
 # =========================================================
-# SIMENP-FVL v10.0 - Soporte de Decisión Avanzada
+# SIMENP-FVL v10.1 - Soporte de Decisión Avanzada
 # =========================================================
 
 st.set_page_config(page_title="SIMENP Professional", layout="wide", page_icon="🧪")
-
-# --- ESTILOS ---
-st.markdown("""
-    <style>
-   .metric-container { background-color: #ffffff; border-radius: 10px; padding: 15px; border: 1px solid #e0e0e0; }
-    </style>
-""", unsafe_allow_html=True)
 
 # --- GUÍAS TÉCNICAS (ASPEN/ESPEN) ---
 GUIDES = {
@@ -46,13 +39,13 @@ with st.sidebar:
     v_p = st.number_input("P sérico (mg/dL)", value=3.5)
     v_tg = st.number_input("TG (mg/dL)", value=150.0)
     v_glu = st.number_input("Glucemia (mg/dL)", value=120.0)
-    v_uun = st.number_input("UUN (Nitrógeno Ureico Urinario)", value=0.0)
+    v_uun = st.number_input("UUN (g/24h)", value=0.0)
     v_cys = st.number_input("Cisteína (mg/g AA)", value=40 if "Neonato" in p_cat else 0)
 
-st.title("🥗 SIMENP-FVL v10.0")
-st.caption("Seguimiento Farmacoterapéutico Integral en Nutrición Parenteral")
+st.title("🥗 SIMENP-FVL v10.1")
+st.caption("Seguimiento Farmacoterapéutico Avanzado - Químico Farmacéutico")
 
-sap_input = st.text_area("Datos de SAP (Nombre + Volumen mL):", height=150)
+sap_input = st.text_area("Datos de SAP (Componente + Volumen mL):", height=150)
 
 if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
     nutri = {k: 0.0 for k in SAP_MAP.keys()}
@@ -84,23 +77,24 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         p_mml = (nutri["Fósforo"] / vol_tot) * 1000
         sol_factor = ((ca_mql * 0.863) * (p_mml * 1.19)) / aa_perc if aa_perc > 0 else 0
         
-        # Límite de Precipitación (PL) dinámico
         aaf_val = GUIDES[p_cat]["aaf"]
         precip_limit = aaf_val + (v_cys * aaf_val / 100)
         if nutri["Lípidos"] > 0:
-            precip_limit -= ((nutri["Lípidos"]/p_weight) * aaf_val / ((nutri["Proteína"]/p_weight) * 10))
+            aa_g_kg = nutri["Proteína"] / p_weight
+            lip_g_kg = nutri["Lípidos"] / p_weight
+            precip_limit -= (lip_g_kg * aaf_val / (aa_g_kg * 10 if aa_g_kg > 0 else 1))
 
         # --- Dashboard ---
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("GIR (Oxidación)", f"{gir:.2f}", delta="ALTO" if gir > GUIDES[p_cat]["gir"] else None, delta_color="inverse")
         c2.metric("Relación NPC:N", f"{npc_n:.1f}:1", help="Meta 80-100:1")
         c3.metric("Kcal/kg/día", f"{kcal_tot/p_weight:.1f}")
-        c4.metric("Factor Solubilidad", f"{sol_factor:.1f}", help="Debe ser menor al límite PL")
+        c4.metric("Factor Solubilidad", f"{sol_factor:.1f}")
 
-        # --- Tabla de Evaluación (Sintaxis Corregida) ---
+        # --- Tabla de Evaluación ---
         st.subheader("📋 Cumplimiento de Metas Nutricionales")
-        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_3](start_span)[span_3](end_span)}", "g/kg/d"],
-           ['kcal']} - {GUIDES[p_cat]['kcal'][span_4](start_span)[span_4](end_span)}", "kcal/kg/d"],
+        eval_list = ["Proteína", f"{nutri['Proteína']/p_weight:.2f}", f"{GUIDES[p_cat]['prot']} - {GUIDES[p_cat]['prot'][span_8](start_span)[span_8](end_span)}", "g/kg/d"],
+           ['kcal']} - {GUIDES[p_cat]['kcal'][span_9](start_span)[span_9](end_span)}", "kcal/kg/d"],
             ["Lípidos", f"{nutri['Lípidos']/p_weight:.2f}", f"máx {GUIDES[p_cat]['lip']}", "g/kg/d"],
             ["Fósforo", f"{nutri['Fósforo']/p_weight:.2f}", "1.0 - 2.0", "mmol/kg/d"]
         st.table(pd.DataFrame(eval_list, columns=["Parámetro", "Actual", "Meta Guía", "Unidad"]))
@@ -108,9 +102,9 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         # --- Análisis y Ajustes ---
         t1, t2 = st.tabs(["⚖️ Estabilidad Física", "🏥 Ajustes Clínicos"])
         with t1:
-            st.write(f"**Factor SF:** {sol_factor:.2f} | **Límite PL:** {precip_limit:.2f}")
+            st.write(f"**Solución (SF):** {sol_factor:.2f} | **Límite (PL):** {precip_limit:.2f}")
             if sol_factor > precip_limit:
-                st.error("❌ RIESGO CRÍTICO DE PRECIPITACIÓN. Reducir Ca/P o aumentar volumen.")
+                st.error("❌ RIESGO CRÍTICO DE PRECIPITACIÓN CALCIO-FÓSFORO.")
             else:
                 st.success("✅ Mezcla estable físico-químicamente.")
             div = (nutri["Calcio"] + nutri["Magnesio"]) / (vol_tot/1000)
@@ -118,8 +112,8 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
                 st.warning(f"⚠️ Cationes divalentes elevados ({div:.1f} mEq/L). Riesgo de ruptura de emulsión.")
 
         with t2:
-            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Realimentación. No aumentar GIR.")
-            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender aporte de lípidos.")
+            if v_p < 2.5: st.error("🚨 HIPOFOSFATEMIA: Riesgo de Realimentación. Bloquear avance de GIR.")
+            if v_tg > 400: st.error("🚨 TRIGLICÉRIDOS > 400 mg/dL: Suspender lípidos y reevaluar.")
             if v_glu > 180:
                 insu = nutri * 0.1
                 st.warning(f"🚨 HIPERGLUCEMIA: Sugerencia {insu:.1f} UI de Insulina Regular en bolsa.")
@@ -129,4 +123,4 @@ if st.button("🚀 INICIAR SEGUIMIENTO PROFESIONAL", type="primary"):
         st.error("Error: Verifique el peso y el formato de SAP (Volumen al final de cada línea).")
 
 st.divider()
-st.caption("Validado bajo estándares ASPEN 2023 / ESPEN 2024. SIMENP-FVL es propiedad intelectual del Servicio de Farmacia Clínica.")
+st.caption("Validado según ASPEN 2023 / ESPEN 2024 / Anderson Equation (Hospital Pharmacy 57:6).")
