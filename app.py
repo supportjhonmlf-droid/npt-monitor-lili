@@ -72,7 +72,7 @@ with st.sidebar:
 st.title("SIMENP-FVL")
 st.subheader("Sistema Integral de Monitorización Enteral y Parenteral Avanzada")
 
-sap_input = st.text_area("Pegar Sábana SAP (Componente + Volumen):", height=150)
+sap_input = st.text_area("Pegar Formulación SAP (Componente + Volumen):", height=150)
 
 if st.button("EJECUTAR ANÁLISIS FARMACOTERAPÉUTICO", type="primary"):
     nutri, vol_tot = {k: 0.0 for k in SAP_CONV}, 0
